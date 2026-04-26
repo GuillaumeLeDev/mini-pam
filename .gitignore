@@ -1,0 +1,16 @@
+# Documentation
+*.md
+
+# Variables d'environnement
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Docker
+*.log
+
+# Base de données
+*.db

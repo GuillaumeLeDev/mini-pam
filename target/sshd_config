@@ -1,0 +1,9 @@
+Port 2222
+PermitRootLogin no
+PasswordAuthentication yes
+PubkeyAuthentication yes
+ChallengeResponseAuthentication no
+LogLevel VERBOSE
+SyslogFacility AUTH
+UsePAM no
+PrintMotd yes

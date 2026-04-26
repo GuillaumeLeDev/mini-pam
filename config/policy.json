@@ -1,0 +1,38 @@
+{
+  "users": {
+    "guillaume": {
+      "role": "ops_engineer",
+      "allowed_targets": ["server-dev-*"],
+      "max_session_minutes": 60,
+      "require_reason": true,
+      "mfa_required": false
+    },
+    "admin_pam": {
+      "role": "pam_admin",
+      "allowed_targets": ["*"],
+      "max_session_minutes": 120,
+      "require_reason": true,
+      "mfa_required": false
+    }
+  },
+  "targets": {
+    "server-dev-01": {
+      "host": "target-dev",
+      "port": 2222,
+      "ssh_user": "admin",
+      "vault_secret": "target-dev-admin",
+      "criticality": "low",
+      "allowed_roles": ["ops_engineer", "pam_admin"],
+      "dual_approval": false
+    },
+    "server-prod-01": {
+      "host": "target-prod",
+      "port": 2222,
+      "ssh_user": "admin",
+      "vault_secret": "target-prod-admin",
+      "criticality": "high",
+      "allowed_roles": ["pam_admin"],
+      "dual_approval": true
+    }
+  }
+}

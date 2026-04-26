@@ -1,0 +1,73 @@
+# Réseau interne — seul le portail sera exposé à l'hôte en prod
+networks:
+  pam-network:
+    driver: bridge
+
+volumes:
+  vault-data:
+  bastion-data:
+
+services:
+
+  # ── Secret Store ─────────────────────────────────────────────────────────────
+  vault:
+    build: ./vault
+    container_name: pam-vault
+    networks:
+      - pam-network
+    volumes:
+      - vault-data:/data
+    environment:
+      VAULT_API_KEY: ${VAULT_API_KEY}
+      FERNET_KEY: ${FERNET_KEY}
+    ports:
+      - "5001:5001"   # exposé temporairement pour le dev — à retirer en prod
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ── Machines cibles SSH ───────────────────────────────────────────────────────
+  target-dev:
+    build: ./target
+    container_name: pam-target-dev
+    networks:
+      - pam-network
+    environment:
+      VAULT_URL: http://vault:5001
+      VAULT_API_KEY: ${VAULT_API_KEY}
+      SECRET_NAME: target-dev-admin
+    depends_on:
+      vault:
+        condition: service_healthy
+
+  # ── Bastion / Jump Server ────────────────────────────────────────────────────
+  bastion:
+    build: ./proxy
+    container_name: pam-bastion
+    networks:
+      - pam-network
+    volumes:
+      - ./config:/config:ro
+      - bastion-data:/data
+    environment:
+      VAULT_URL: http://vault:5001
+      VAULT_API_KEY: ${VAULT_API_KEY}
+      BASTION_API_KEY: ${BASTION_API_KEY}
+      POLICY_PATH: /config/policy.json
+      LOG_PATH: /data/sessions.log
+    ports:
+      - "5002:5002"   # exposé temporairement pour le dev — à retirer en prod
+    depends_on:
+      vault:
+        condition: service_healthy
+
+  # Phase 3+ : portal, rotation (à décommenter)
+  # portal:
+  #   build: ./portal
+  #   ...
+  # rotation:
+  #   build: ./rotation
+  #   ...
