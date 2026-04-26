@@ -9,6 +9,7 @@ from functools import wraps
 
 from cryptography.fernet import Fernet
 from flask import Flask, g, jsonify, request
+from rate_limiter import is_blocked, record_failure
 
 app = Flask(__name__)
 
@@ -91,8 +92,12 @@ def log_access(action: str, secret_name: str, actor: str, ip: str, status: str):
 def require_api_key(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        ip = request.remote_addr
+        if is_blocked(ip):
+            return jsonify({"error": "Too many failed attempts"}), 429
         if request.headers.get("X-API-Key") != VAULT_API_KEY:
-            log_access("auth_failed", "-", "unknown", request.remote_addr, "denied")
+            record_failure(ip)
+            log_access("auth_failed", "-", "unknown", ip, "denied")
             return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated

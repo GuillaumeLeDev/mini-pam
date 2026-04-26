@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<h4 class="mb-4">Dashboard</h4>
+
+{% for alert in alerts %}
+<div class="alert alert-warning alert-dismissible" role="alert">
+  &#9888; {{ alert }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card stat-card border-success h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1 small">Secrets actifs</p>
+        <h2 class="text-success mb-0">{{ active_secrets }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card border-danger h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1 small">Secrets expirés</p>
+        <h2 class="text-danger mb-0">{{ expired_secrets }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card border-primary h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1 small">Sessions actives</p>
+        <h2 class="text-primary mb-0">{{ active_sessions }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <a href="/checkout" class="btn btn-success w-100">+ Demander un accès</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <strong>Sessions récentes</strong>
+        <a href="/sessions" class="text-decoration-none small">Voir tout &rarr;</a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_sessions %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>Utilisateur</th><th>Cible</th><th>Début</th><th>Statut</th></tr>
+          </thead>
+          <tbody>
+            {% for s in recent_sessions %}
+            <tr>
+              <td>{{ s.user }}</td>
+              <td><code>{{ s.target }}</code></td>
+              <td><small>{{ s.start[:19].replace("T", " ") }}</small></td>
+              <td>
+                {% if s.status == "active" %}<span class="badge bg-success">active</span>
+                {% elif s.status == "closed_timeout" %}<span class="badge bg-warning text-dark">timeout JIT</span>
+                {% elif s.status == "closed_error" %}<span class="badge bg-danger">error</span>
+                {% else %}<span class="badge bg-secondary">closed</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">Aucune session enregistrée.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><strong>Agent de rotation</strong></div>
+      <div class="card-body">
+        {% if rotation %}
+        <ul class="list-unstyled mb-0 small">
+          <li><span class="text-muted">Secrets gérés :</span> <strong>{{ rotation.total_managed }}</strong></li>
+          <li><span class="text-muted">Rotations réussies :</span> <strong class="text-success">{{ rotation.rotation_count }}</strong></li>
+          <li><span class="text-muted">Échecs :</span> <strong class="text-danger">{{ rotation.failure_count }}</strong></li>
+          <li class="mt-2"><span class="text-muted">Dernière rotation :</span><br>
+            <small>{{ rotation.last_success or "—" }}</small>
+          </li>
+          {% if rotation.expired_unrotated %}
+          <li class="mt-2 text-danger"><strong>&#9888; Expirés non renouvelés :</strong><br>
+            {% for s in rotation.expired_unrotated %}<code>{{ s }}</code><br>{% endfor %}
+          </li>
+          {% endif %}
+        </ul>
+        {% else %}
+        <p class="text-muted small mb-0">Agent de rotation non disponible.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

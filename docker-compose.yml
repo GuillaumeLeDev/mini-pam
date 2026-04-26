@@ -1,4 +1,4 @@
-# Réseau interne — seul le portail sera exposé à l'hôte en prod
+# Réseau interne — seul le portail est exposé à l'hôte en prod
 networks:
   pam-network:
     driver: bridge
@@ -20,8 +20,9 @@ services:
     environment:
       VAULT_API_KEY: ${VAULT_API_KEY}
       FERNET_KEY: ${FERNET_KEY}
+      TRUSTED_SERVICES: "bastion,rotation"
     ports:
-      - "5001:5001"   # exposé temporairement pour le dev — à retirer en prod
+      - "5001:5001"   # dev uniquement — supprimer en prod
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5001/health"]
       interval: 10s
@@ -43,6 +44,19 @@ services:
       vault:
         condition: service_healthy
 
+  target-prod:
+    build: ./target
+    container_name: pam-target-prod
+    networks:
+      - pam-network
+    environment:
+      VAULT_URL: http://vault:5001
+      VAULT_API_KEY: ${VAULT_API_KEY}
+      SECRET_NAME: target-prod-admin
+    depends_on:
+      vault:
+        condition: service_healthy
+
   # ── Bastion / Jump Server ────────────────────────────────────────────────────
   bastion:
     build: ./proxy
@@ -59,15 +73,46 @@ services:
       POLICY_PATH: /config/policy.json
       LOG_PATH: /data/sessions.log
     ports:
-      - "5002:5002"   # exposé temporairement pour le dev — à retirer en prod
+      - "5002:5002"   # dev uniquement — supprimer en prod
     depends_on:
       vault:
         condition: service_healthy
 
-  # Phase 3+ : portal, rotation (à décommenter)
-  # portal:
-  #   build: ./portal
-  #   ...
-  # rotation:
-  #   build: ./rotation
-  #   ...
+  # ── Agent de rotation automatique ────────────────────────────────────────────
+  rotation:
+    build: ./rotation
+    container_name: pam-rotation
+    networks:
+      - pam-network
+    volumes:
+      - ./config:/config:ro
+    environment:
+      VAULT_URL: http://vault:5001
+      VAULT_API_KEY: ${VAULT_API_KEY}
+      POLICY_PATH: /config/policy.json
+      ROTATION_INTERVAL_SECONDS: "3600"
+      TTL_THRESHOLD_PCT: "0.20"
+    ports:
+      - "5003:5003"   # dev uniquement — supprimer en prod
+    depends_on:
+      vault:
+        condition: service_healthy
+
+  # ── Portail web (seul service public) ────────────────────────────────────────
+  portal:
+    build: ./portal
+    container_name: pam-portal
+    networks:
+      - pam-network
+    environment:
+      VAULT_URL: http://vault:5001
+      VAULT_API_KEY: ${VAULT_API_KEY}
+      BASTION_URL: http://bastion:5002
+      BASTION_API_KEY: ${BASTION_API_KEY}
+      ROTATION_URL: http://rotation:5003
+      PORTAL_USER: guillaume
+    ports:
+      - "5000:5000"   # seul port public en prod
+    depends_on:
+      - bastion
+      - vault

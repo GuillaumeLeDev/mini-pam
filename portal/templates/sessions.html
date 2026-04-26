@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Audit Sessions{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>Audit des sessions</h4>
+  <a href="/sessions/export.csv" class="btn btn-outline-secondary btn-sm">&#8659; Export CSV</a>
+</div>
+
+<form class="row g-2 mb-4 align-items-end" method="GET">
+  <div class="col-auto">
+    <label class="form-label small mb-1">Utilisateur</label>
+    <input type="text" class="form-control form-control-sm" name="user"
+           placeholder="guillaume" value="{{ filter_user }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label small mb-1">Cible</label>
+    <input type="text" class="form-control form-control-sm" name="target"
+           placeholder="server-dev-01" value="{{ filter_target }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label small mb-1">Statut</label>
+    <select class="form-select form-select-sm" name="status">
+      <option value="">Tous</option>
+      <option value="active" {% if filter_status == "active" %}selected{% endif %}>active</option>
+      <option value="closed_normal" {% if filter_status == "closed_normal" %}selected{% endif %}>closed_normal</option>
+      <option value="closed_timeout" {% if filter_status == "closed_timeout" %}selected{% endif %}>closed_timeout (JIT)</option>
+      <option value="closed_error" {% if filter_status == "closed_error" %}selected{% endif %}>closed_error</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-primary">Filtrer</button>
+    <a href="/sessions" class="btn btn-sm btn-outline-secondary">Reset</a>
+  </div>
+</form>
+
+{% if sessions %}
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th><th>Utilisateur</th><th>Cible</th>
+          <th>Raison</th><th>Début</th><th>Fin</th><th>Cmds</th><th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sessions %}
+        <tr>
+          <td><small><code>{{ s.session_id[:8] }}…</code></small></td>
+          <td>{{ s.user }}</td>
+          <td><code>{{ s.target }}</code></td>
+          <td>
+            <span title="{{ s.reason }}">
+              {{ s.reason[:35] }}{% if s.reason|length > 35 %}…{% endif %}
+            </span>
+          </td>
+          <td><small>{{ s.start[:19].replace("T"," ") }}</small></td>
+          <td><small>{{ s.end[:19].replace("T"," ") if s.end else "—" }}</small></td>
+          <td class="text-center">
+            <span class="badge bg-secondary">{{ s.commands|length }}</span>
+          </td>
+          <td>
+            {% if s.status == "active" %}
+              <span class="badge bg-success">active</span>
+            {% elif s.status == "closed_timeout" %}
+              <span class="badge bg-warning text-dark">timeout JIT</span>
+            {% elif s.status == "closed_error" %}
+              <span class="badge bg-danger">error</span>
+            {% else %}
+              <span class="badge bg-secondary">closed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="text-muted small mt-2">{{ sessions|length }} session(s) — <a href="/sessions/export.csv">exporter en CSV</a> pour la conformité bancaire.</p>
+{% else %}
+<div class="text-muted">Aucune session ne correspond aux filtres.</div>
+{% endif %}
+
+{% endblock %}

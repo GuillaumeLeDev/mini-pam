@@ -5,11 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY vault_api.py .
-COPY rate_limiter.py .
+COPY rotation_agent.py .
 
-RUN mkdir -p /data
+EXPOSE 5003
 
-EXPOSE 5001
-
-CMD ["python", "vault_api.py"]
+CMD ["python", "rotation_agent.py"]

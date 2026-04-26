@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h4 class="mb-4">Demander un accès privilégié</h4>
+
+    {% if result %}
+      {% if result.success %}
+      <div class="alert alert-success">
+        <strong>&#10003; Accès accordé</strong>
+        <hr>
+        <p class="mb-1">Session ID : <code>{{ result.session_id }}</code></p>
+        <p class="mb-1">Expire dans : <strong>{{ result.expires_in }} minutes</strong></p>
+        <p class="mb-0 text-muted small">Le mot de passe n'est jamais transmis — connexion gérée par le bastion.</p>
+      </div>
+      {% else %}
+      <div class="alert alert-danger">
+        <strong>&#10007; Accès refusé</strong> — {{ result.error }}
+      </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="card">
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Utilisateur connecté</label>
+            <input type="text" class="form-control bg-light" value="{{ user }}" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cible <span class="text-danger">*</span></label>
+            <select class="form-select" name="target" required>
+              <option value="">-- Sélectionner une machine --</option>
+              <option value="server-dev-01">server-dev-01 &nbsp;&#9679; criticité basse</option>
+              <option value="server-prod-01">server-prod-01 &nbsp;&#9632; criticité haute (pam_admin only)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Justification <span class="text-danger">*</span></label>
+            <textarea class="form-control" name="reason" rows="2" required
+              placeholder="Ex : Restart nginx suite à incident P1 — ticket #4521"></textarea>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Durée (minutes)</label>
+            <input type="number" class="form-control" name="duration" value="30" min="1" max="120">
+            <div class="form-text">Maximum autorisé selon votre rôle : 60 min (ops_engineer)</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Demander l'accès</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-3 border-secondary">
+      <div class="card-body small text-muted">
+        <strong>Comment ça fonctionne :</strong><br>
+        Le bastion vérifie vos droits, récupère le mot de passe dans le vault,
+        ouvre la connexion SSH, et vous retourne un <code>session_id</code>.
+        Vous n'avez jamais accès au mot de passe réel.
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

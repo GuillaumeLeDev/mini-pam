@@ -5,5 +5,4 @@ PubkeyAuthentication yes
 ChallengeResponseAuthentication no
 LogLevel VERBOSE
 SyslogFacility AUTH
-UsePAM no
 PrintMotd yes

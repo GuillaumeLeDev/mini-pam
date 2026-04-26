@@ -1,5 +1,6 @@
-# Documentation
+# Documentation (sauf README principal)
 *.md
+!README.md
 
 # Variables d'environnement
 .env
