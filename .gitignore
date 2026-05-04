@@ -2,6 +2,9 @@
 *.md
 !README.md
 
+# Fichiers générés
+revision_pam.pdf
+
 # Variables d'environnement
 .env
 
