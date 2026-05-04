@@ -13,11 +13,11 @@ until curl -sf "$VAULT_URL/health" > /dev/null 2>&1; do
 done
 echo "[setup] Vault disponible."
 
-create_secret() {
+create_or_renew_secret() {
     local name=$1
     local value=$2
     local owner=$3
-    local ttl=${4:-48}
+    local ttl=${4:-720}
 
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$VAULT_URL/secrets" \
         -H "Content-Type: application/json" \
@@ -30,7 +30,21 @@ create_secret() {
     if [ "$HTTP_CODE" = "201" ]; then
         echo "[setup] ✓ Secret '$name' créé — expire dans ${ttl}h"
     elif [ "$HTTP_CODE" = "409" ]; then
-        echo "[setup] ~ Secret '$name' existe déjà, ignoré"
+        # Secret existe — vérifier s'il est expiré
+        STATUS=$(curl -s "$VAULT_URL/secrets" \
+            -H "X-API-Key: $VAULT_API_KEY" | \
+            python3 -c "import sys,json; s=[x for x in json.load(sys.stdin) if x['name']=='$name']; print(s[0]['status'] if s else 'missing')")
+        if [ "$STATUS" = "expired" ]; then
+            ROTATE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VAULT_URL/secrets/$name/rotate" \
+                -H "X-API-Key: $VAULT_API_KEY")
+            if [ "$ROTATE_CODE" = "200" ]; then
+                echo "[setup] ↻ Secret '$name' expiré — rotation forcée OK"
+            else
+                echo "[setup] ✗ Échec rotation '$name' (HTTP $ROTATE_CODE)"
+            fi
+        else
+            echo "[setup] ~ Secret '$name' actif, ignoré"
+        fi
     else
         echo "[setup] ✗ Erreur sur '$name' (HTTP $HTTP_CODE) : $BODY"
     fi
@@ -38,7 +52,7 @@ create_secret() {
 
 echo "[setup] Création des secrets initiaux..."
 
-create_secret "target-dev-admin"  "DevAdmin2024!"  "system" 48
-create_secret "target-prod-admin" "ProdAdmin2024!" "system" 24
+create_or_renew_secret "target-dev-admin"  "DevAdmin2024!"  "system" 720
+create_or_renew_secret "target-prod-admin" "ProdAdmin2024!" "system" 720
 
 echo "[setup] Terminé. Démarrer docker-compose up pour target-dev."
