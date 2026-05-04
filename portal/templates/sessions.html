@@ -1,84 +1,158 @@
 {% extends "base.html" %}
 {% block title %}Audit Sessions{% endblock %}
+
 {% block content %}
 
+<!-- ── En-tête : titre + bouton export ───────────────────────────────────── -->
+<!-- d-flex = active Flexbox sur cette div -->
+<!-- justify-content-between = titre à gauche, bouton à droite -->
+<!-- align-items-center = aligne verticalement au centre (titre et bouton sur la même ligne) -->
+<!-- 📌 À REVOIR : ce triplet d-flex + justify-content-between + align-items-center est très courant -->
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>Audit des sessions</h4>
+  <!-- btn-outline-secondary = bouton avec juste une bordure (pas de fond coloré) -->
+  <!-- btn-sm = bouton plus petit que la taille par défaut -->
+  <!-- &#8659; = ⇓ flèche téléchargement en unicode -->
+  <!-- href="/sessions/export.csv" déclenche le téléchargement via l'endpoint Flask -->
+  <!-- 📌 À REVOIR : un <a> avec un href vers un fichier CSV = téléchargement direct, pas de JS requis -->
   <a href="/sessions/export.csv" class="btn btn-outline-secondary btn-sm">&#8659; Export CSV</a>
 </div>
 
+
+<!-- ── Formulaire de filtrage ─────────────────────────────────────────────── -->
+<!-- method="GET" : les filtres passent dans l'URL → ?user=gui&target=dev&status=active -->
+<!-- 📌 À REVOIR : GET est correct ici car filtrer n'est pas une action destructrice — l'URL est partageable -->
+<!-- row g-2 align-items-end = les champs s'alignent par le bas (labels de hauteurs différentes) -->
 <form class="row g-2 mb-4 align-items-end" method="GET">
+
+  <!-- col-auto = la colonne prend juste la largeur de son contenu (pas de col-md-X fixe) -->
+  <!-- 📌 À REVOIR : col-auto est pratique pour les formulaires de filtre en ligne -->
   <div class="col-auto">
+    <!-- form-label small mb-1 = étiquette petite avec peu de marge en bas -->
     <label class="form-label small mb-1">Utilisateur</label>
+    <!-- form-control-sm = variante plus petite de form-control -->
+    <!-- value="{{ filter_user }}" : re-remplit le champ avec le filtre actif (pour garder le contexte après filtrage) -->
+    <!-- 📌 À REVOIR : sans value="{{ filter_user }}", le champ se viderait à chaque soumission -->
     <input type="text" class="form-control form-control-sm" name="user"
            placeholder="guillaume" value="{{ filter_user }}">
   </div>
+
   <div class="col-auto">
     <label class="form-label small mb-1">Cible</label>
     <input type="text" class="form-control form-control-sm" name="target"
            placeholder="server-dev-01" value="{{ filter_target }}">
   </div>
+
+  <!-- Filtre par statut : liste déroulante avec les 4 statuts possibles -->
   <div class="col-auto">
     <label class="form-label small mb-1">Statut</label>
+    <!-- form-select-sm = select plus petit -->
     <select class="form-select form-select-sm" name="status">
       <option value="">Tous</option>
+      <!-- re-sélectionne l'option choisie après soumission du filtre -->
+      <!-- 📌 À REVOIR : l'attribut HTML "selected" indique l'option présélectionnée dans un <select> -->
       <option value="active" {% if filter_status == "active" %}selected{% endif %}>active</option>
       <option value="closed_normal" {% if filter_status == "closed_normal" %}selected{% endif %}>closed_normal</option>
       <option value="closed_timeout" {% if filter_status == "closed_timeout" %}selected{% endif %}>closed_timeout (JIT)</option>
       <option value="closed_error" {% if filter_status == "closed_error" %}selected{% endif %}>closed_error</option>
     </select>
   </div>
+
   <div class="col-auto">
     <button type="submit" class="btn btn-sm btn-primary">Filtrer</button>
+    <!-- Lien "Reset" = retourne sur /sessions sans paramètres GET (efface tous les filtres) -->
+    <!-- 📌 À REVOIR : un <a> ne soumet pas de formulaire, il navigue juste vers l'URL indiquée -->
     <a href="/sessions" class="btn btn-sm btn-outline-secondary">Reset</a>
   </div>
 </form>
 
+
+<!-- ── Tableau des sessions ───────────────────────────────────────────────── -->
+<!-- Jinja2 : sessions est une liste Python. Liste vide = falsy → bloc else affiché -->
 {% if sessions %}
 <div class="card">
+  <!-- p-0 : supprime le padding interne de card-body pour que le tableau touche les bords -->
   <div class="card-body p-0">
+
+    <!-- table-sm = cellules plus compactes (moins de padding) -->
+    <!-- 📌 À REVOIR : table-hover colore la ligne au survol, table-sm réduit l'espace vertical -->
     <table class="table table-hover table-sm mb-0">
+
+      <!-- table-dark = en-tête avec fond noir et texte blanc -->
       <thead class="table-dark">
         <tr>
           <th>ID</th><th>Utilisateur</th><th>Cible</th>
           <th>Raison</th><th>Début</th><th>Fin</th><th>Cmds</th><th>Statut</th>
         </tr>
       </thead>
+
       <tbody>
+        <!-- Boucle sur toutes les sessions filtrées (envoyées par Flask) -->
         {% for s in sessions %}
         <tr>
+
+          <!-- UUID tronqué à 8 chars + … pour économiser l'espace -->
+          <!-- s.session_id[:8] = slicing Python/Jinja2 sur les chaînes -->
+          <!-- 📌 À REVOIR : les slices fonctionnent exactement comme en Python dans Jinja2 -->
           <td><small><code>{{ s.session_id[:8] }}…</code></small></td>
+
           <td>{{ s.user }}</td>
+
           <td><code>{{ s.target }}</code></td>
+
+          <!-- Raison tronquée à 35 chars avec tooltip sur le texte complet -->
           <td>
+            <!-- title="{{ s.reason }}" = tooltip natif HTML (info-bulle au survol) -->
+            <!-- 📌 À REVOIR : l'attribut title fonctionne sur presque toutes les balises HTML -->
             <span title="{{ s.reason }}">
+              <!-- Troncature : affiche les 35 premiers caractères puis "…" si trop long -->
+              <!-- | length = filtre Jinja2 qui retourne len() de la chaîne -->
+              <!-- 📌 À REVOIR : cette logique est l'équivalent de s.reason[:35] + "…" en Python -->
               {{ s.reason[:35] }}{% if s.reason|length > 35 %}…{% endif %}
             </span>
           </td>
-          <td><small>{{ s.start[:19].replace("T"," ") }}</small></td>
-          <td><small>{{ s.end[:19].replace("T"," ") if s.end else "—" }}</small></td>
+
+          <!-- | localtime = filtre custom (portal.py:14-23) : convertit UTC ISO → heure locale -->
+          <td><small>{{ s.start | localtime }}</small></td>
+          <td><small>{{ s.end | localtime }}</small></td>
+
+          <!-- Nombre de commandes exécutées dans la session -->
+          <!-- s.commands est une liste Python → | length = len(s.commands) -->
+          <!-- text-center = texte centré dans la cellule -->
+          <!-- 📌 À REVOIR : badge bg-secondary = étiquette grise Bootstrap -->
           <td class="text-center">
             <span class="badge bg-secondary">{{ s.commands|length }}</span>
           </td>
+
+          <!-- Colonne statut avec badge coloré selon la valeur -->
           <td>
             {% if s.status == "active" %}
               <span class="badge bg-success">active</span>
             {% elif s.status == "closed_timeout" %}
+              <!-- text-dark sur fond warning (jaune) pour la lisibilité -->
               <span class="badge bg-warning text-dark">timeout JIT</span>
             {% elif s.status == "closed_error" %}
               <span class="badge bg-danger">error</span>
             {% else %}
+              <!-- catch-all : closed_normal et tout autre statut inattendu -->
               <span class="badge bg-secondary">closed</span>
             {% endif %}
           </td>
+
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
+<!-- Pied de tableau : compteur + lien export -->
+<!-- {{ sessions|length }} = nombre total de sessions affichées (après filtrage) -->
+<!-- 📌 À REVOIR : | length sur une liste = len() en Python pur -->
 <p class="text-muted small mt-2">{{ sessions|length }} session(s) — <a href="/sessions/export.csv">exporter en CSV</a> pour la conformité bancaire.</p>
+
 {% else %}
+<!-- Aucune session ne correspond aux filtres actifs -->
 <div class="text-muted">Aucune session ne correspond aux filtres.</div>
 {% endif %}
 

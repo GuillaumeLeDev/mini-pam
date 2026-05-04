@@ -1,25 +1,52 @@
+<!-- Hérite du squelette base.html (navbar + container + Bootstrap déjà chargés) -->
+<!-- 📌 À REVOIR : extends = "je suis un enfant de base.html, je remplis ses blocs" -->
 {% extends "base.html" %}
+
+<!-- Remplace le block title de base.html → onglet du navigateur sera "mini-PAM — Dashboard" -->
 {% block title %}Dashboard{% endblock %}
+
 {% block content %}
 
 <h4 class="mb-4">Dashboard</h4>
+<!-- mb-4 = margin-bottom 4 (espacement sous le titre). Bootstrap utilise une échelle 0→5 -->
+<!-- 📌 À REVOIR : mb-X, mt-X, ms-X, me-X = margin bottom/top/start(left)/end(right) -->
 
+<!-- ── Alertes dynamiques ──────────────────────────────────────────────────── -->
+<!-- Jinja2 : boucle sur la liste d'alertes envoyée par Flask (vide = rien affiché) -->
 {% for alert in alerts %}
 <div class="alert alert-warning alert-dismissible" role="alert">
+  <!-- &#9888; = emoji ⚠ en code HTML -->
   &#9888; {{ alert }}
+  <!-- btn-close + data-bs-dismiss="alert" : Bootstrap JS ferme la div quand on clique -->
+  <!-- 📌 À REVOIR : data-bs-* sont des attributs HTML5 lus par le JS Bootstrap -->
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 {% endfor %}
 
+
+<!-- ── Ligne de 4 cartes statistiques ─────────────────────────────────────── -->
+<!-- row = ligne Bootstrap. g-3 = gap entre les colonnes (gutter). mb-4 = marge sous la ligne -->
+<!-- 📌 À REVOIR : la grille Bootstrap divise la page en 12 colonnes. col-md-3 = 3/12 = 25% -->
 <div class="row g-3 mb-4">
+
+  <!-- Carte 1 : nombre de secrets actifs (vert) -->
+  <!-- col-md-3 = la colonne prend 3/12 de largeur sur écrans "medium" (≥768px) et + -->
   <div class="col-md-3">
+    <!-- card = composant Bootstrap (cadre blanc avec ombre légère) -->
+    <!-- stat-card = notre classe CSS custom (barre colorée à gauche) -->
+    <!-- border-success = la barre gauche sera verte (couleur Bootstrap "success") -->
+    <!-- 📌 À REVOIR : h-100 = height 100% → toutes les cartes ont la même hauteur -->
     <div class="card stat-card border-success h-100">
       <div class="card-body">
+        <!-- text-muted = texte grisé. small = police plus petite. mb-1 = petite marge en bas -->
         <p class="text-muted mb-1 small">Secrets actifs</p>
+        <!-- {{ active_secrets }} = valeur entière envoyée par Flask (calculée dans portal.py) -->
         <h2 class="text-success mb-0">{{ active_secrets }}</h2>
       </div>
     </div>
   </div>
+
+  <!-- Carte 2 : secrets expirés (rouge) -->
   <div class="col-md-3">
     <div class="card stat-card border-danger h-100">
       <div class="card-body">
@@ -28,6 +55,8 @@
       </div>
     </div>
   </div>
+
+  <!-- Carte 3 : sessions SSH actuellement actives (bleu) -->
   <div class="col-md-3">
     <div class="card stat-card border-primary h-100">
       <div class="card-body">
@@ -36,35 +65,62 @@
       </div>
     </div>
   </div>
+
+  <!-- Carte 4 : bouton d'action rapide -->
+  <!-- d-flex align-items-center justify-content-center = flexbox centré vertical+horizontal -->
+  <!-- 📌 À REVOIR : d-flex active Flexbox sur la div. C'est la base du layout CSS moderne -->
   <div class="col-md-3">
     <div class="card h-100">
       <div class="card-body d-flex align-items-center justify-content-center">
+        <!-- w-100 = width 100% (le bouton prend toute la largeur de la carte) -->
         <a href="/checkout" class="btn btn-success w-100">+ Demander un accès</a>
       </div>
     </div>
   </div>
 </div>
 
+
+<!-- ── Deuxième ligne : tableau + métriques rotation ─────────────────────── -->
 <div class="row g-3">
+
+  <!-- Colonne gauche : tableau des sessions récentes (8/12 = 66% de largeur) -->
   <div class="col-md-8">
     <div class="card">
+
+      <!-- card-header = en-tête grisé de la carte -->
+      <!-- d-flex justify-content-between = les deux éléments sont aux extrémités opposées -->
+      <!-- 📌 À REVOIR : justify-content-between est du Flexbox (espace entre les enfants) -->
       <div class="card-header d-flex justify-content-between">
         <strong>Sessions récentes</strong>
+        <!-- &rarr; = flèche → en HTML. text-decoration-none supprime le soulignement du lien -->
         <a href="/sessions" class="text-decoration-none small">Voir tout &rarr;</a>
       </div>
+
+      <!-- p-0 = padding 0 (le tableau touche les bords de la carte, plus élégant) -->
       <div class="card-body p-0">
+
+        <!-- Jinja2 : si la liste est non vide, on affiche le tableau -->
         {% if recent_sessions %}
+        <!-- table-hover = Bootstrap ajoute un fond coloré au survol de chaque ligne -->
+        <!-- mb-0 = pas de marge en bas (évite un espace blanc sous le tableau) -->
         <table class="table table-hover mb-0">
+          <!-- table-light = en-tête avec fond gris clair -->
           <thead class="table-light">
             <tr><th>Utilisateur</th><th>Cible</th><th>Début</th><th>Statut</th></tr>
           </thead>
           <tbody>
+            <!-- Jinja2 : boucle sur recent_sessions (liste de dicts Python) -->
             {% for s in recent_sessions %}
             <tr>
               <td>{{ s.user }}</td>
+              <!-- <code> = rendu en police monospace (style "terminal") -->
               <td><code>{{ s.target }}</code></td>
-              <td><small>{{ s.start[:19].replace("T", " ") }}</small></td>
+              <!-- | localtime = filtre Jinja2 custom défini dans portal.py (convertit UTC → heure locale) -->
+              <!-- 📌 À REVOIR : les filtres Jinja2 s'appliquent avec le pipe | comme en bash -->
+              <td><small>{{ s.start | localtime }}</small></td>
               <td>
+                <!-- Conditions imbriquées pour choisir la couleur du badge selon le statut -->
+                <!-- 📌 À REVOIR : les blocs if/elif/else/endif de Jinja2 fonctionnent comme en Python -->
                 {% if s.status == "active" %}<span class="badge bg-success">active</span>
                 {% elif s.status == "closed_timeout" %}<span class="badge bg-warning text-dark">timeout JIT</span>
                 {% elif s.status == "closed_error" %}<span class="badge bg-danger">error</span>
@@ -75,26 +131,35 @@
           </tbody>
         </table>
         {% else %}
+        <!-- Si la liste est vide, message informatif -->
         <p class="text-muted p-3 mb-0">Aucune session enregistrée.</p>
         {% endif %}
       </div>
     </div>
   </div>
 
+  <!-- Colonne droite : métriques de l'agent de rotation (4/12 = 33%) -->
   <div class="col-md-4">
     <div class="card">
       <div class="card-header"><strong>Agent de rotation</strong></div>
       <div class="card-body">
+        <!-- Jinja2 : rotation = dict vide {} si l'agent est hors-ligne (falsy → bloc else) -->
         {% if rotation %}
+        <!-- list-unstyled = supprime les puces de la liste <ul> -->
         <ul class="list-unstyled mb-0 small">
           <li><span class="text-muted">Secrets gérés :</span> <strong>{{ rotation.total_managed }}</strong></li>
           <li><span class="text-muted">Rotations réussies :</span> <strong class="text-success">{{ rotation.rotation_count }}</strong></li>
           <li><span class="text-muted">Échecs :</span> <strong class="text-danger">{{ rotation.failure_count }}</strong></li>
+          <!-- mt-2 = margin-top 2 (petit espace au-dessus) -->
           <li class="mt-2"><span class="text-muted">Dernière rotation :</span><br>
+            <!-- "or '—'" : si last_success est None/vide, affiche un tiret cadratin -->
+            <!-- 📌 À REVOIR : le "or" fonctionne comme en Python dans les templates Jinja2 -->
             <small>{{ rotation.last_success or "—" }}</small>
           </li>
+          <!-- Alerte si des secrets sont expirés sans avoir été renouvelés -->
           {% if rotation.expired_unrotated %}
           <li class="mt-2 text-danger"><strong>&#9888; Expirés non renouvelés :</strong><br>
+            <!-- Boucle sur la liste des noms de secrets en alerte -->
             {% for s in rotation.expired_unrotated %}<code>{{ s }}</code><br>{% endfor %}
           </li>
           {% endif %}

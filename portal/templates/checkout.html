@@ -1,57 +1,123 @@
+<!-- Hérite de base.html : navbar + Bootstrap déjà inclus -->
 {% extends "base.html" %}
 {% block title %}Checkout{% endblock %}
+
 {% block content %}
 
+<!-- justify-content-center : centre la colonne horizontalement dans la ligne -->
+<!-- 📌 À REVOIR : row + justify-content-center = pattern classique pour centrer un formulaire -->
 <div class="row justify-content-center">
+
+  <!-- col-md-6 = prend 6/12 = 50% de la largeur sur écrans ≥768px (tablette/desktop) -->
+  <!-- Sur mobile (<768px), la colonne prend automatiquement 100% de la largeur -->
+  <!-- 📌 À REVOIR : Bootstrap est "mobile-first" — sans col-sm/col-xs, ça prend 100% par défaut -->
   <div class="col-md-6">
     <h4 class="mb-4">Demander un accès privilégié</h4>
 
+    <!-- ── Zone de résultat (visible seulement après soumission du formulaire) ── -->
+    <!-- Jinja2 : result=None au GET, result={...} au POST (portal.py:99-104) -->
     {% if result %}
+
+      <!-- Branche succès : l'accès a été accordé par le bastion -->
       {% if result.success %}
       <div class="alert alert-success">
+        <!-- &#10003; = ✓ (coche) en code HTML unicode -->
         <strong>&#10003; Accès accordé</strong>
+        <!-- <hr> = ligne horizontale de séparation -->
         <hr>
+        <!-- session_id = UUID généré par le bastion (jamais le mot de passe) -->
         <p class="mb-1">Session ID : <code>{{ result.session_id }}</code></p>
         <p class="mb-1">Expire dans : <strong>{{ result.expires_in }} minutes</strong></p>
+        <!-- mb-0 = pas de marge en bas (évite un espace inutile dans l'alerte) -->
         <p class="mb-0 text-muted small">Le mot de passe n'est jamais transmis — connexion gérée par le bastion.</p>
       </div>
+
+      <!-- Branche échec : bastion a refusé l'accès (policy, vault down, SSH failed...) -->
       {% else %}
       <div class="alert alert-danger">
+        <!-- &#10007; = ✗ (croix) en code HTML unicode -->
         <strong>&#10007; Accès refusé</strong> — {{ result.error }}
       </div>
       {% endif %}
-    {% endif %}
 
+    {% endif %}
+    <!-- ── Fin de la zone de résultat ──────────────────────────────────────── -->
+
+
+    <!-- ── Formulaire de demande d'accès ──────────────────────────────────── -->
     <div class="card">
       <div class="card-body">
+
+        <!-- method="POST" : les données du formulaire sont envoyées dans le corps HTTP (sécurisé) -->
+        <!-- 📌 À REVOIR : GET met les données dans l'URL (?key=val), POST les cache dans le corps -->
+        <!-- action="" vide = le formulaire soumet vers la même URL (/checkout) -->
         <form method="POST">
+
+          <!-- Champ 1 : utilisateur en lecture seule (on ne peut pas le changer) -->
           <div class="mb-3">
+            <!-- form-label fw-semibold = étiquette en semi-gras au-dessus du champ -->
             <label class="form-label fw-semibold">Utilisateur connecté</label>
+            <!-- bg-light = fond gris clair pour signaler visuellement que c'est non-modifiable -->
+            <!-- readonly = l'utilisateur ne peut pas taper dedans, mais la valeur est visible -->
+            <!-- 📌 À REVOIR : readonly ≠ disabled. disabled n'est PAS envoyé au serveur, readonly oui -->
             <input type="text" class="form-control bg-light" value="{{ user }}" readonly>
           </div>
+
+          <!-- Champ 2 : sélection de la machine cible -->
           <div class="mb-3">
+            <!-- <span class="text-danger">*</span> = astérisque rouge pour indiquer obligatoire -->
             <label class="form-label fw-semibold">Cible <span class="text-danger">*</span></label>
+            <!-- form-select = style Bootstrap pour les menus déroulants <select> -->
+            <!-- name="target" = clé utilisée par Flask pour lire la valeur : request.form.get("target") -->
+            <!-- required = le navigateur bloque la soumission si rien n'est sélectionné -->
+            <!-- 📌 À REVOIR : l'attribut "name" est INDISPENSABLE pour que Flask reçoive la valeur -->
             <select class="form-select" name="target" required>
+              <!-- Option vide pour forcer l'utilisateur à faire un choix -->
               <option value="">-- Sélectionner une machine --</option>
+              <!-- value="server-dev-01" = ce que Flask reçoit, le texte entre balises = ce qu'on voit -->
+              <!-- &nbsp; = espace insécable (évite que le texte colle aux options) -->
+              <!-- &#9679; = ● (point plein) / &#9632; = ■ (carré) : indicateurs visuels de criticité -->
               <option value="server-dev-01">server-dev-01 &nbsp;&#9679; criticité basse</option>
               <option value="server-prod-01">server-prod-01 &nbsp;&#9632; criticité haute (pam_admin only)</option>
             </select>
           </div>
+
+          <!-- Champ 3 : justification obligatoire (audit trail PAM) -->
           <div class="mb-3">
             <label class="form-label fw-semibold">Justification <span class="text-danger">*</span></label>
+            <!-- <textarea> = zone de texte multi-lignes. rows="2" = hauteur initiale de 2 lignes -->
+            <!-- placeholder = texte d'exemple grisé qui disparaît quand on tape -->
+            <!-- 📌 À REVOIR : <textarea> n'a pas d'attribut value — le texte va entre les balises -->
             <textarea class="form-control" name="reason" rows="2" required
               placeholder="Ex : Restart nginx suite à incident P1 — ticket #4521"></textarea>
           </div>
+
+          <!-- Champ 4 : durée de la session en minutes -->
           <div class="mb-4">
             <label class="form-label fw-semibold">Durée (minutes)</label>
+            <!-- type="number" = champ numérique avec flèches haut/bas -->
+            <!-- value="30" = valeur pré-remplie par défaut -->
+            <!-- min="1" max="120" = contraintes navigateur (le bastion vérifie aussi côté serveur) -->
+            <!-- 📌 À REVOIR : les validations HTML (min/max/required) sont contournables — toujours valider côté serveur aussi -->
             <input type="number" class="form-control" name="duration" value="30" min="1" max="120">
+            <!-- form-text = texte d'aide grisé sous le champ -->
             <div class="form-text">Maximum autorisé selon votre rôle : 60 min (ops_engineer)</div>
           </div>
+
+          <!-- Bouton de soumission -->
+          <!-- type="submit" déclenche l'envoi du formulaire -->
+          <!-- w-100 = occupe 100% de la largeur de la carte -->
+          <!-- 📌 À REVOIR : btn btn-primary = bouton bleu Bootstrap. btn-success=vert, btn-danger=rouge -->
           <button type="submit" class="btn btn-primary w-100">Demander l'accès</button>
+
         </form>
       </div>
     </div>
+    <!-- ── Fin du formulaire ───────────────────────────────────────────────── -->
 
+
+    <!-- Carte d'explication pédagogique (couleur secondaire = gris) -->
+    <!-- mt-3 = margin-top 3 (espace au-dessus, séparation avec le formulaire) -->
     <div class="card mt-3 border-secondary">
       <div class="card-body small text-muted">
         <strong>Comment ça fonctionne :</strong><br>
@@ -60,6 +126,7 @@
         Vous n'avez jamais accès au mot de passe réel.
       </div>
     </div>
+
   </div>
 </div>
 

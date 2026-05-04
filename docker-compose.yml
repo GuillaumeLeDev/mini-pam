@@ -111,6 +111,7 @@ services:
       BASTION_API_KEY: ${BASTION_API_KEY}
       ROTATION_URL: http://rotation:5003
       PORTAL_USER: guillaume
+      TZ: Europe/Paris
     ports:
       - "5000:5000"   # seul port public en prod
     depends_on:

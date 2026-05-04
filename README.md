@@ -107,6 +107,9 @@ bash scripts/setup.sh
 
 # 4. Vérifier que tout fonctionne
 python3 scripts/health_check.py
+
+# 5. (Optionnel) Peupler avec des données de démo réalistes
+bash scripts/demo_data.sh
 ```
 
 Le portail est accessible sur **http://localhost:5000**

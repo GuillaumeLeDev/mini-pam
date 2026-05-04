@@ -3,11 +3,25 @@
 import csv
 import io
 import os
+from datetime import datetime, timezone
 
 import requests
 from flask import Flask, Response, render_template, request
 
 app = Flask(__name__)
+
+
+def utc_to_local(utc_str: str) -> str:
+    """Convertit un timestamp UTC ISO en heure locale du serveur."""
+    if not utc_str:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(utc_str).replace(tzinfo=timezone.utc)
+        return dt.astimezone().strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return utc_str[:16]
+
+app.jinja_env.filters["localtime"] = utc_to_local
 
 VAULT_URL = os.environ["VAULT_URL"]
 VAULT_API_KEY = os.environ["VAULT_API_KEY"]
